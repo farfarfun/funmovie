@@ -11,8 +11,6 @@ from notemovie.database.job import add_magnet
 from notemovie.magnet.utils import get_logger, get_nodes_info, get_rand_id, get_neighbor
 
 BOOTSTRAP_NODES = [
-    "udp://tracker.open-internet.nl:6969/announce",
-    "udp://tracker.coppersurfer.tk:6969/announce",
     "udp://exodus.desync.com:6969/announce",
     "udp://tracker.opentrackr.org:1337/announce",
     "udp://tracker.internetwarriors.net:1337/announce",
@@ -31,6 +29,8 @@ BOOTSTRAP_NODES = [
     "http://0d.kebhana.mx:443/announce",
     "udp://torr.ws:2710/announce",
     "udp://open.stealth.si:80/announce",
+    "udp://tracker.open-internet.nl:6969/announce",
+    "udp://tracker.coppersurfer.tk:6969/announce",
     ("router.bittorrent.com", 6881),
     ("dht.transmissionbt.com", 6881),
     ("router.utorrent.com", 6881),
@@ -45,7 +45,7 @@ UDP_RECV_BUFFSIZE = 65535
 # 服务 host
 SERVER_HOST = "0.0.0.0"
 # 服务端口
-SERVER_PORT = 9090
+SERVER_PORT = 9099
 # 磁力链接前缀
 MAGNET_PER = "magnet:?xt=urn:btih:{}"
 # while 循环休眠时间
@@ -105,7 +105,7 @@ class DHTServer:
         """
         try:
             # msg 要经过 bencode 编码
-            self.udp.sendto(bencoder.bencode(msg), address)
+            res = self.udp.sendto(bencoder.bencode(msg), address)
         except:
             pass
 
@@ -263,10 +263,12 @@ class DHTServer:
         self.bootstrap()
         while True:
             try:
+                print("begin")
                 # 接受返回报文
                 data, address = self.udp.recvfrom(UDP_RECV_BUFFSIZE)
                 # 使用 bdecode 解码返回数据
                 msg = bencoder.bdecode(data)
+                print(msg)
                 # 处理返回信息
                 self.on_message(msg, address)
                 time.sleep(SLEEP_TIME)
