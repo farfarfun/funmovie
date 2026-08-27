@@ -269,3 +269,6 @@ example/download/*
 .specstory/
 CLAUDE.local.md
 AGENTS.local.md
+
+# runtime cache (auto-created via CREATE TABLE IF NOT EXISTS; populated by scraping jobs)
+notemovie/database/movieset.db
