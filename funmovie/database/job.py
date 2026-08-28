@@ -1,4 +1,4 @@
-from notemovie.database.core import MovieManage, MagnetManage
+from funmovie.database.core import MovieManage, MagnetManage
 
 manage = MovieManage()
 manage.create()

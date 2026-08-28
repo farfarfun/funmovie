@@ -1,6 +1,6 @@
-from notemovie.magnet.crawler import start_server
-from notemovie.magnet.magnet_to_torrent_aria2c import magnet2torrent
-from notemovie.magnet.parse_torrent import parse_torrent
+from funmovie.magnet.crawler import start_server
+from funmovie.magnet.magnet_to_torrent_aria2c import magnet2torrent
+from funmovie.magnet.parse_torrent import parse_torrent
 
 
 def command_line_runner():

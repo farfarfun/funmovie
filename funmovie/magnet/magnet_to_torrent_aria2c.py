@@ -1,10 +1,10 @@
 import json
 from http.client import HTTPConnection
 
-from notemovie.database.job import get_magnets as _get_magnets
+from funmovie.database.job import get_magnets as _get_magnets
 
 SAVE_PATH = ".\\torrents"
-SAVE_PATH = '/Users/liangtaoniu/workspace/MyDiary/notechats/notemovie/notemovie/magnet/torrents'
+SAVE_PATH = '/Users/liangtaoniu/workspace/MyDiary/notechats/funmovie/funmovie/magnet/torrents'
 STOP_TIMEOUT = 60
 MAX_CONCURRENT = 16
 MAX_MAGNETS = 10

@@ -1,5 +1,5 @@
 from notedrive.magnet.core import Magnet2Torrent
-from notemovie.database.job import get_magnets, update_status
+from funmovie.database.job import get_magnets, update_status
 
 mt = Magnet2Torrent(use_additional_trackers=True)
 

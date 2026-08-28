@@ -7,8 +7,8 @@ from threading import Thread
 
 import bencoder
 
-from notemovie.database.job import add_magnet
-from notemovie.magnet.utils import get_logger, get_nodes_info, get_rand_id, get_neighbor
+from funmovie.database.job import add_magnet
+from funmovie.magnet.utils import get_logger, get_nodes_info, get_rand_id, get_neighbor
 
 BOOTSTRAP_NODES = [
     "udp://exodus.desync.com:6969/announce",

@@ -2,8 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-from notemovie.database.job import add_magnet
-from notemovie.utils import thunder2magnet
+from funmovie.database.job import add_magnet
+from funmovie.utils import thunder2magnet
 
 
 def web1(index_start=90, index_end=110):
