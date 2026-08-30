@@ -1,6 +1,6 @@
 import os
 
-from notetool.database import SqliteTable
+from funtool.database import SqliteTable
 
 
 class MovieManage(SqliteTable):
