@@ -1,10 +1,17 @@
 import json
+from collections.abc import Iterator
 from http.client import HTTPConnection
+
+from farlog import getLogger
 
 from funmovie.database.job import get_magnets as _get_magnets
 
-SAVE_PATH = ".\\torrents"
-SAVE_PATH = '/Users/liangtaoniu/workspace/MyDiary/notechats/funmovie/funmovie/magnet/torrents'
+logger = getLogger(__name__)
+
+# 种子保存目录，实际使用需按本机环境修改
+SAVE_PATH = (
+    "/Users/liangtaoniu/workspace/MyDiary/notechats/funmovie/funmovie/magnet/torrents"
+)
 STOP_TIMEOUT = 60
 MAX_CONCURRENT = 16
 MAX_MAGNETS = 10
@@ -13,20 +20,23 @@ ARIA2RPC_ADDR = "127.0.0.1"
 ARIA2RPC_PORT = 6800
 
 
-def get_magnets():
+def get_magnets() -> Iterator[str]:
     """
-    获取磁力链接
+    从本地存储中取出待下载的磁力链接
+
+    :return: 磁力链接字符串的迭代器
     """
     mgs = _get_magnets(MAX_MAGNETS)
     for m in mgs:
-        # 解码成字符串
         yield m
 
 
-def exec_rpc(magnet):
+def exec_rpc(magnet: str) -> None:
     """
-    使用 rpc，减少线程资源占用，关于这部分的详细信息科参考
+    通过 aria2c 的 JSON-RPC 接口提交磁力下载任务，减少线程资源占用。详见
     https://aria2.github.io/manual/en/html/aria2c.html?highlight=enable%20rpc#aria2.addUri
+
+    :param magnet: 磁力链接
     """
     conn = HTTPConnection(ARIA2RPC_ADDR, ARIA2RPC_PORT)
     req = {
@@ -43,19 +53,22 @@ def exec_rpc(magnet):
             },
         ],
     }
-    conn.request("POST", "/jsonrpc", json.dumps(req), {"Content-Type": "application/json"})
+    conn.request(
+        "POST", "/jsonrpc", json.dumps(req), {"Content-Type": "application/json"}
+    )
 
     res = json.loads(conn.getresponse().read())
     if "error" in res:
-        print("Aria2c replied with an error:", res["error"])
+        logger.error(
+            "aria2c 提交下载任务失败: magnet=%s, error=%s", magnet, res["error"]
+        )
 
 
-def magnet2torrent():
-    """
-    磁力转种子
-    """
+def magnet2torrent() -> None:
+    """把本地存储中待下载的磁力链接逐个提交给 aria2c 转成种子下载任务"""
     for magnet in get_magnets():
         exec_rpc(magnet)
 
 
-magnet2torrent()
+if __name__ == "__main__":
+    magnet2torrent()

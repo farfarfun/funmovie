@@ -1,20 +1,39 @@
 [project]
 name = "funmovie"
-version = "0.0.4"
-description = "funmovie"
+version = "0.0.5"
+description = "BitTorrent DHT 磁力链接采集、迅雷链接转磁力、本地存储（SQLite/Redis）与 aria2c 下载、种子元信息解析工具"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "牛哥", email = "farfarfun@qq.com" }]
-dependencies = []
+dependencies = [
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "tqdm>=4.66.0",
+    "redis>=5.0.0",
+    # PyPI 上的 `bencoder`（0.2.0）只提供 encode/decode API，代码实际用的
+    # bencode/bdecode 由同 import 名下的另一个发行版 `bencoder.pyx` 提供
+    "bencoder.pyx>=3.0.0",
+    # farfuntool<0.6.26 的已发布 wheel 里 funtool.database 仍从早已不存在于
+    # PyPI 的 notetool 包 import（farfarfun/funtool@4f005ae 已在源码修复，
+    # 但截至本次修复 0.6.26 尚未发布到 PyPI），锁定下限避免装到坏版本
+    "farfuntool>=0.6.26",
+    # farfuntool 已发布的 wheel 元数据缺失 ipywidgets 与 pandas（其
+    # funtool/__init__.py、funtool/database/core.py 分别无条件 import 二者），
+    # 此处显式声明规避该上游打包问题
+    "ipywidgets>=8.0.0",
+    "pandas>=2.0.0",
+    "farlog>=1.1.7",
+]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["funmovie"]
+packages = ["src/funmovie"]
 
 [dependency-groups]
 dev = ["pytest>=8"]

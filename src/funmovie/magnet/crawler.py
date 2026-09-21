@@ -8,7 +8,7 @@ from threading import Thread
 import bencoder
 
 from funmovie.database.job import add_magnet
-from funmovie.magnet.utils import get_logger, get_nodes_info, get_rand_id, get_neighbor
+from funmovie.magnet.utils import get_logger, get_neighbor, get_nodes_info, get_rand_id
 
 BOOTSTRAP_NODES = [
     "udp://exodus.desync.com:6969/announce",
@@ -36,8 +36,6 @@ BOOTSTRAP_NODES = [
     ("router.utorrent.com", 6881),
 ]
 
-BOOTSTRAP_NODES = open('./tracks/all.txt', 'r').read().split('\n')
-
 # 双端队列容量
 MAX_NODE_QSIZE = 10000
 # UDP 报文 buffsize
@@ -59,14 +57,18 @@ MAX_PROCESSES = cpu_count() // 2 or cpu_count()
 
 
 class HNode:
-    def __init__(self, nid, ip=None, port=None):
+    """DHT 路由表中的一个节点，记录节点 id、ip、port"""
+
+    def __init__(self, nid: bytes, ip: str | None = None, port: int | None = None):
         self.nid = nid
         self.ip = ip
         self.port = port
 
 
 class DHTServer:
-    def __init__(self, bind_ip, bind_port, process_id):
+    """基于 KRPC 协议的简化版 DHT 爬虫服务，通过嗅探 get_peers/announce_peer 请求采集 info_hash"""
+
+    def __init__(self, bind_ip: str, bind_port: int, process_id: int):
         self.bind_ip = bind_ip
         self.bind_port = bind_port
         self.process_id = process_id
@@ -75,7 +77,7 @@ class DHTServer:
         # KRPC 协议是由 bencode 编码组成的一个简单的 RPC 结构，使用 UDP 报文发送。
         self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.udp.bind((self.bind_ip, self.bind_port))  # UDP 地址绑定
-        self.logger = get_logger("logger_{}".format(bind_port))
+        self.logger = get_logger(f"logger_{bind_port}")
 
     def bootstrap(self):
         """
@@ -105,9 +107,9 @@ class DHTServer:
         """
         try:
             # msg 要经过 bencode 编码
-            res = self.udp.sendto(bencoder.bencode(msg), address)
-        except:
-            pass
+            self.udp.sendto(bencoder.bencode(msg), address)
+        except OSError as e:
+            self.logger.warning("发送 krpc 消息失败: address=%s, error=%s", address, e)
 
     def send_error(self, tid, address):
         """
@@ -136,11 +138,12 @@ class DHTServer:
         """
         nid = get_neighbor(nid) if nid else self.nid
         tid = get_rand_id()
-        msg = dict(t=tid,
-                   y="q",
-                   q="find_node",  # 指定请求为 find_node
-                   a=dict(id=nid, target=get_rand_id()),
-                   )
+        msg = dict(
+            t=tid,
+            y="q",
+            q="find_node",  # 指定请求为 find_node
+            a=dict(id=nid, target=get_rand_id()),
+        )
         self.send_krpc(msg, address)
 
     def send_find_node_forever(self):
@@ -168,7 +171,7 @@ class DHTServer:
         hex_info_hash = codecs.getencoder("hex")(info_hash)[0].decode()
         magnet = MAGNET_PER.format(hex_info_hash)
         add_magnet(magnet)
-        self.logger.info("pid_{0} - {1}".format(self.process_id, magnet))
+        self.logger.info(f"pid_{self.process_id} - {magnet}")
 
     def on_message(self, msg, address):
         """
@@ -256,24 +259,24 @@ class DHTServer:
         """
         循环接受 udp 数据
         """
-        self.logger.info(
-            "receive response forever {}:{}".format(self.bind_ip, self.bind_port)
-        )
+        self.logger.info(f"receive response forever {self.bind_ip}:{self.bind_port}")
         # 首先加入到 DHT 网络
         self.bootstrap()
         while True:
             try:
-                print("begin")
                 # 接受返回报文
                 data, address = self.udp.recvfrom(UDP_RECV_BUFFSIZE)
                 # 使用 bdecode 解码返回数据
                 msg = bencoder.bdecode(data)
-                print(msg)
+                self.logger.debug("收到 krpc 消息: address=%s, msg=%s", address, msg)
                 # 处理返回信息
                 self.on_message(msg, address)
                 time.sleep(SLEEP_TIME)
-            except Exception as e:
-                self.logger.warning(e)
+            except (OSError, ValueError) as e:
+                # UDP 接收失败或 bencode 解码失败，记录上下文后继续监听，不中断长期运行的服务
+                self.logger.warning(
+                    "接收/解析 krpc 消息失败: pid_%s, error=%s", self.process_id, e
+                )
 
 
 def _start_thread(offset):
@@ -311,4 +314,5 @@ def start_server():
         p.join()
 
 
-start_server()
+if __name__ == "__main__":
+    start_server()
