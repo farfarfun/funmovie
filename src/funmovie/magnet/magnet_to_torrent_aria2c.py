@@ -1,4 +1,5 @@
 import json
+import os
 from collections.abc import Iterator
 from http.client import HTTPConnection
 
@@ -9,9 +10,7 @@ from funmovie.database.job import get_magnets as _get_magnets
 logger = getLogger(__name__)
 
 # 种子保存目录，实际使用需按本机环境修改
-SAVE_PATH = (
-    "/Users/liangtaoniu/workspace/MyDiary/notechats/funmovie/funmovie/magnet/torrents"
-)
+SAVE_PATH = os.environ.get("FUNMOVIE_SAVE_PATH", os.path.expanduser("~/.cache/funmovie/torrents"))
 STOP_TIMEOUT = 60
 MAX_CONCURRENT = 16
 MAX_MAGNETS = 10

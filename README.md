@@ -23,7 +23,7 @@ pip install -e .
 ```python
 from funmovie.library.get_magnet import get_magnet
 
-get_magnet()  # 爬取 funmovie/library/get_magnet.py 里内置的站点，把新磁力链接 upsert 进本地 SQLite
+get_magnet()  # 爬取 funmovie/library/get_magnet.py 里内置的站点，把新磁力链接写入本地 SQLite
 ```
 
 ### 2. 迅雷链接转磁力链接
@@ -46,7 +46,7 @@ add_magnet("magnet:?xt=urn:btih:xxxx")
 print(get_magnets(size=10))
 ```
 
-默认落地到 `funmovie/database/movieset.db`（SQLite）。`funmovie/database/core_redis.py` 里还提供了一个 `RedisClient`，可以选择把磁力链接存到 Redis 而不是 SQLite。
+默认落地到 `src/funmovie/database/movieset.db`（SQLite）；可调用 `funmovie.database.job.initialize(db_path=...)` 指定路径。`funmovie/database/core_redis.py` 里还提供了一个 `RedisClient`，可以选择把磁力链接存到 Redis 而不是 SQLite。
 
 ### 4. 磁力链接转种子下载（依赖本地 aria2c）
 
