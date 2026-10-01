@@ -3,4 +3,5 @@
 # 不再手写 setup.py/twine 流程。用法：script/build.sh build / script/build.sh push
 set -euo pipefail
 
+uv lock --check
 uvx funbuild "$@"

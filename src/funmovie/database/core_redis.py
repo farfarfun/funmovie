@@ -21,8 +21,14 @@ class RedisClient:
         self,
         host: str = REDIS_HOST,
         port: int = REDIS_PORT,
-        password: str = REDIS_PASSWORD,
-    ):
+        password: str | None = REDIS_PASSWORD,
+    ) -> None:
+        """创建 Redis 客户端。
+
+        :param host: Redis 主机名
+        :param port: Redis 端口
+        :param password: Redis 密码；无密码时为 None
+        """
         conn_pool = redis.ConnectionPool(
             host=host,
             port=port,
@@ -39,7 +45,7 @@ class RedisClient:
         """
         self.redis.sadd(REDIS_KEY, magnet)
 
-    def get_magnets(self, count: int = 128) -> list:
+    def get_magnets(self, count: int = 128) -> list[bytes]:
         """
         随机返回指定数量的磁力链接
 

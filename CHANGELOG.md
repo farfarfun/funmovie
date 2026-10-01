@@ -9,7 +9,7 @@
   - PyPI 包名 `notemovie` → `funmovie`
   - 已核实 `pip index versions notemovie`：旧名下从未发布过任何版本，无需发转发版。如果之后有变化，给 `notemovie` 发一个指向 `funmovie` 的转发版本需要仓库所有者手动跟进，本次不做自动化处理。
 - 目录结构调整为 `src/funmovie/` 布局，`pyproject.toml` 改用 `hatchling` 构建后端，依赖管理迁移到 `uv`（声明版本下限 + `uv.lock`）。
-- 依赖声明修正：`funtool`（PyPI 上是与本项目无关的第三方包）改为正确的 `farfuntool`；`bencoder`（0.2.0，只有 `encode`/`decode`）改为 `bencoder.pyx`（提供代码实际使用的 `bencode`/`bdecode` API）；显式声明 `ipywidgets`、`pandas` 以规避 `farfuntool` 已发布元数据缺失这两个依赖声明的问题。
+- 依赖声明修正：移除尚无可安装版本的 `farfuntool`，改用标准库 `sqlite3` 完成本项目所需的数据库操作；`bencoder`（0.2.0，只有 `encode`/`decode`）改为 `bencoder.pyx`（提供代码实际使用的 `bencode`/`bdecode` API）。
 - 日志统一改用 `farlog`，替换原来自建的 `logging`/`print`。
 - `script/build.sh` 改为统一调用 `uvx funbuild`，不再手写 `setup.py`/`twine` 发布流程。
 

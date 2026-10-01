@@ -1,6 +1,7 @@
 import codecs
 import os
 from pprint import pprint
+from typing import Any
 
 from bencoder import bdecode
 
@@ -10,11 +11,11 @@ TORRENT_SAVE_PATH = "torrents"
 class ParserTorrent:
     """解析 .torrent 文件的元信息（文件名、创建时间、创建者等）"""
 
-    def __init__(self, torrent: str):
+    def __init__(self, torrent: str) -> None:
         self.meta_info = self.get_meta_info(torrent)
 
     @staticmethod
-    def get_meta_info(torrent: str) -> dict:
+    def get_meta_info(torrent: str) -> dict[bytes, Any]:
         """
         读取并解码 .torrent 文件，返回解码后的 meta info 字典
 
@@ -58,7 +59,7 @@ class ParserTorrent:
                 filename = filename.replace(c, "\\'")
         return filename.decode()
 
-    def _get_multi_filename(self) -> list:
+    def _get_multi_filename(self) -> list[tuple[str, Any]]:
         """
         获取多文件种子里每个文件的信息（路径、大小等）
 
@@ -81,7 +82,7 @@ class ParserTorrent:
                 info.append((k.decode(), v))
         return info
 
-    def get_filename(self) -> str | list:
+    def get_filename(self) -> str | list[tuple[str, Any]]:
         """
         获取种子文件名：单文件返回文件名字符串，多文件返回文件信息列表
 

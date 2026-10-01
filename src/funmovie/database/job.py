@@ -39,7 +39,7 @@ def get_magnet() -> str:
     return _magnet_manager().get_magnets(1)[0]
 
 
-def get_magnets(size: int = 10, status: int = 0) -> list:
+def get_magnets(size: int = 10, status: int = 0) -> list[str]:
     """
     批量取出待处理的磁力链接
 

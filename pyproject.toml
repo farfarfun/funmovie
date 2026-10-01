@@ -16,15 +16,6 @@ dependencies = [
     # PyPI 上的 `bencoder`（0.2.0）只提供 encode/decode API，代码实际用的
     # bencode/bdecode 由同 import 名下的另一个发行版 `bencoder.pyx` 提供
     "bencoder.pyx>=3.0.0",
-    # farfuntool<0.6.26 的已发布 wheel 里 funtool.database 仍从早已不存在于
-    # PyPI 的 notetool 包 import（farfarfun/funtool@4f005ae 已在源码修复，
-    # 但截至本次修复 0.6.26 尚未发布到 PyPI），锁定下限避免装到坏版本
-    "farfuntool>=0.6.26",
-    # farfuntool 已发布的 wheel 元数据缺失 ipywidgets 与 pandas（其
-    # funtool/__init__.py、funtool/database/core.py 分别无条件 import 二者），
-    # 此处显式声明规避该上游打包问题
-    "ipywidgets>=8.0.0",
-    "pandas>=2.0.0",
     "farlog>=1.1.7",
 ]
 

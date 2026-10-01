@@ -4,6 +4,7 @@ import time
 from collections import deque
 from multiprocessing import Process, cpu_count
 from threading import Thread
+from typing import Any
 
 import bencoder
 
@@ -59,7 +60,7 @@ MAX_PROCESSES = cpu_count() // 2 or cpu_count()
 class HNode:
     """DHT 路由表中的一个节点，记录节点 id、ip、port"""
 
-    def __init__(self, nid: bytes, ip: str | None = None, port: int | None = None):
+    def __init__(self, nid: bytes, ip: str | None = None, port: int | None = None) -> None:
         self.nid = nid
         self.ip = ip
         self.port = port
@@ -68,7 +69,7 @@ class HNode:
 class DHTServer:
     """基于 KRPC 协议的简化版 DHT 爬虫服务，通过嗅探 get_peers/announce_peer 请求采集 info_hash"""
 
-    def __init__(self, bind_ip: str, bind_port: int, process_id: int):
+    def __init__(self, bind_ip: str, bind_port: int, process_id: int) -> None:
         self.bind_ip = bind_ip
         self.bind_port = bind_port
         self.process_id = process_id
@@ -79,14 +80,14 @@ class DHTServer:
         self.udp.bind((self.bind_ip, self.bind_port))  # UDP 地址绑定
         self.logger = get_logger(f"logger_{bind_port}")
 
-    def bootstrap(self):
+    def bootstrap(self) -> None:
         """
         利用 tracker 服务器，伪装成 DHT 节点，加入 DHT 网络
         """
         for address in BOOTSTRAP_NODES:
             self.send_find_node(address)
 
-    def bs_timer(self):
+    def bs_timer(self) -> None:
         """
         定时执行 bootstrap()
         """
@@ -98,7 +99,7 @@ class DHTServer:
             t += 1
             time.sleep(1)
 
-    def send_krpc(self, msg, address):
+    def send_krpc(self, msg: dict[Any, Any], address: Any) -> None:
         """
         发送 krpc 协议
 
@@ -111,14 +112,14 @@ class DHTServer:
         except OSError as e:
             self.logger.warning("发送 krpc 消息失败: address=%s, error=%s", address, e)
 
-    def send_error(self, tid, address):
+    def send_error(self, tid: bytes, address: Any) -> None:
         """
         发送错误回复
         """
         msg = dict(t=tid, y="e", e=[202, "Server Error"])
         self.send_krpc(msg, address)
 
-    def send_find_node(self, address, nid=None):
+    def send_find_node(self, address: Any, nid: bytes | None = None) -> None:
         """
         发送 find_node 请求。
 
@@ -146,7 +147,7 @@ class DHTServer:
         )
         self.send_krpc(msg, address)
 
-    def send_find_node_forever(self):
+    def send_find_node_forever(self) -> None:
         """
         循环发送 find_node 请求
         """
@@ -161,7 +162,7 @@ class DHTServer:
                 # 一旦节点队列为空，则重新加入 DHT 网络
                 self.bootstrap()
 
-    def save_magnet(self, info_hash):
+    def save_magnet(self, info_hash: bytes) -> None:
         """
         将磁力链接保存到数据库
 
@@ -173,7 +174,7 @@ class DHTServer:
         add_magnet(magnet)
         self.logger.info(f"pid_{self.process_id} - {magnet}")
 
-    def on_message(self, msg, address):
+    def on_message(self, msg: dict[bytes, Any], address: Any) -> None:
         """
         负责返回信息的处理
 
@@ -208,7 +209,7 @@ class DHTServer:
         except KeyError:
             pass
 
-    def on_find_node_response(self, msg):
+    def on_find_node_response(self, msg: dict[bytes, Any]) -> None:
         """
         解码 nodes 节点信息，并存储在双端队列
 
@@ -223,7 +224,7 @@ class DHTServer:
             # 将节点加入双端队列
             self.nodes.append(HNode(nid, ip, port))
 
-    def on_get_peers_request(self, msg, address):
+    def on_get_peers_request(self, msg: dict[bytes, Any], address: Any) -> None:
         """
         处理 get_peers 请求，获取 info hash
 
@@ -238,7 +239,7 @@ class DHTServer:
             # 没有对应的 info hash，发送错误回复
             self.send_error(tid, address)
 
-    def on_announce_peer_request(self, msg, address):
+    def on_announce_peer_request(self, msg: dict[bytes, Any], address: Any) -> None:
         """
         处理 get_announce 请求，获取 info hash，address, port
         本爬虫目的暂时只是爬取磁链，所以忽略 address, port 有需要的
@@ -255,7 +256,7 @@ class DHTServer:
             # 没有对应的 info hash，发送错误回复
             self.send_error(tid, address)
 
-    def receive_response_forever(self):
+    def receive_response_forever(self) -> None:
         """
         循环接受 udp 数据
         """
@@ -279,7 +280,7 @@ class DHTServer:
                 )
 
 
-def _start_thread(offset):
+def _start_thread(offset: int) -> None:
     """
     启动线程
 
@@ -299,7 +300,7 @@ def _start_thread(offset):
         t.join()
 
 
-def start_server():
+def start_server() -> None:
     """
     多线程启动服务
     """

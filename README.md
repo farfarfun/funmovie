@@ -51,10 +51,10 @@ print(get_magnets(size=10))
 ### 4. 磁力链接转种子下载（依赖本地 aria2c）
 
 ```bash
-python -m funmovie.magnet.magnet_to_torrent_aria2c
+python -m funmovie.magnet.magnet_to_torrent_aria2c --save-path ./torrents
 ```
 
-需要本地跑一个开启了 RPC 的 aria2c（默认连接 `127.0.0.1:6800`），会从数据库里取出待下载的磁力链接，通过 `aria2.addUri` 提交下载任务。
+需要本地跑一个开启了 RPC 的 aria2c（默认连接 `127.0.0.1:6800`），会从数据库里取出待下载的磁力链接，通过 `aria2.addUri` 提交下载任务。保存目录的优先级为命令行参数 `--save-path`、环境变量 `FUNMOVIE_SAVE_PATH`、安全默认值 `~/.cache/funmovie/torrents`。
 
 ### 5. 解析 .torrent 文件
 
@@ -68,7 +68,7 @@ print(info.get_filename())
 ## 已知局限（如实说明）
 
 - `funmovie/magnet/crawler.py` 实现了一个简化版 DHT 爬虫（`DHTServer`），会直接从 BT 网络里嗅探 info_hash；`funmovie/magnet/magnet_to_torrent_aria2c.py` 会通过 aria2c 提交下载任务 —— 这两个文件的网络/RPC 调用都已收进 `if __name__ == "__main__":`，作为脚本运行（`python -m ...`）才会触发，单纯 `import` 不会有副作用。
-- 部分路径（如种子保存目录 `SAVE_PATH`）里硬编码了作者本机路径，实际使用需要自行修改。
+- `add_magnet` 使用 SQLite 的 `insert or ignore`：新链接会插入，主键重复的链接保持原记录不变。
 - 爬取的目标站点、tracker 列表等均为历史遗留配置，可能已失效，需要自行更新维护。
 
 ## 关于 farfarfun

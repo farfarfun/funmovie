@@ -3,7 +3,7 @@ git checkout --orphan latest_branch
 #2. Add all the files
 git add -A
 #3. Commit the changes
-git commit -am "clear history"
+git commit -am "维护: 清理提交历史"
 #4. Delete the branch
 git branch -D master
 #5.Rename the current branch to master

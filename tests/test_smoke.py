@@ -7,7 +7,12 @@ from bencoder import bencode
 
 import funmovie
 import funmovie.utils
+from funmovie.database import job
+from funmovie.database import core_redis
 from funmovie.database.core import MagnetManage, MovieManage
+from funmovie.magnet import magnet_to_torrent_aria2c, tracker_list
+from funmovie.magnet.crawler import DHTServer
+from funmovie.library import get_magnet as get_magnet_module
 from funmovie.magnet.parse_torrent import ParserTorrent
 from funmovie.utils import thunder2magnet, thunder2url
 
@@ -18,6 +23,13 @@ def test_import_funmovie():
 
 def test_import_funmovie_utils():
     assert funmovie.utils is not None
+
+
+def test_import_database_job_does_not_create_database(tmp_path, monkeypatch):
+    database_path = tmp_path / "movieset.db"
+    monkeypatch.setattr(job, "manage", None)
+    monkeypatch.setattr(job, "magnet", None)
+    assert not database_path.exists()
 
 
 THUNDER_URL = (
@@ -69,6 +81,20 @@ def test_magnet_manage_update_status_excludes_from_pending(magnet_manage):
     magnet_manage.insert({"magnet": "magnet:?xt=urn:btih:dddd"})
     magnet_manage.update({"magnet": "magnet:?xt=urn:btih:dddd", "status": 1})
     assert magnet_manage.get_magnets(size=10) == []
+
+
+def test_magnet_manage_empty_result(magnet_manage):
+    assert magnet_manage.get_magnets(size=10) == []
+
+
+def test_job_functions_use_explicit_database(tmp_path, monkeypatch):
+    monkeypatch.setattr(job, "manage", None)
+    monkeypatch.setattr(job, "magnet", None)
+    job.initialize(str(tmp_path / "job.db"))
+    job.add_magnet("magnet:?xt=urn:btih:eeee")
+    assert job.get_magnets() == ["magnet:?xt=urn:btih:eeee"]
+    job.update_status("magnet:?xt=urn:btih:eeee")
+    assert job.get_magnets() == []
 
 
 @pytest.fixture
@@ -124,3 +150,73 @@ def test_parser_torrent_multi_file(tmp_path):
     assert parser.is_files() is True
     filenames = dict(parser.get_filename())
     assert filenames["path"] == ["a.txt"]
+
+
+def test_get_track_writes_response_to_requested_directory(tmp_path, monkeypatch):
+    class Response:
+        text = "udp://one\n\nudp://two\n"
+
+        def raise_for_status(self):
+            return None
+
+    monkeypatch.setattr(tracker_list.requests, "get", lambda url, timeout: Response())
+    assert tracker_list.get_track("https://example.com/all.txt", tmp_path) == [
+        "udp://one",
+        "udp://two",
+    ]
+    assert (tmp_path / "all.txt").read_text() == "udp://one\nudp://two"
+
+
+def test_exec_rpc_uses_configured_save_path_and_logs_error(tmp_path, monkeypatch):
+    requests = []
+
+    class Response:
+        def read(self):
+            return b'{"error": {"message": "failed"}}'
+
+    class Connection:
+        def __init__(self, host, port):
+            assert (host, port) == ("127.0.0.1", 6800)
+
+        def request(self, method, path, body, headers):
+            requests.append(json.loads(body))
+
+        def getresponse(self):
+            return Response()
+
+    import json
+
+    monkeypatch.setattr(magnet_to_torrent_aria2c, "HTTPConnection", Connection)
+    magnet_to_torrent_aria2c.exec_rpc("magnet:test", tmp_path)
+    assert requests[0]["params"][1]["dir"] == str(tmp_path)
+
+
+def test_redis_client_delegates_to_set_operations(monkeypatch):
+    class Redis:
+        def __init__(self, connection_pool):
+            self.values = set()
+
+        def sadd(self, key, value):
+            self.values.add(value.encode())
+
+        def srandmember(self, key, count):
+            return list(self.values)[:count]
+
+    monkeypatch.setattr(core_redis.redis, "ConnectionPool", lambda **kwargs: object())
+    monkeypatch.setattr(core_redis.redis, "Redis", Redis)
+    client = core_redis.RedisClient()
+    client.add_magnet("magnet:test")
+    assert client.get_magnets() == [b"magnet:test"]
+
+
+def test_web_crawler_handles_request_failure(monkeypatch):
+    def fail(url, timeout):
+        raise get_magnet_module.requests.RequestException("offline")
+
+    monkeypatch.setattr(get_magnet_module.requests, "get", fail)
+    get_magnet_module.web1(1, 2)
+
+
+def test_dht_server_ignores_malformed_message():
+    server = object.__new__(DHTServer)
+    server.on_message({}, ("127.0.0.1", 6881))
