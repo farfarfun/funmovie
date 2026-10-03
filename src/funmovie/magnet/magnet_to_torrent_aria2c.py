@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 from collections.abc import Iterator
 from http.client import HTTPConnection
 
@@ -9,6 +10,11 @@ from farlog import getLogger
 from funmovie.database.job import get_magnets as _get_magnets
 
 logger = getLogger(__name__)
+
+
+class Aria2RpcError(RuntimeError):
+    """aria2 JSON-RPC 返回了 error 字段时抛出。"""
+
 
 SAVE_PATH = os.environ.get(
     "FUNMOVIE_SAVE_PATH", os.path.expanduser("~/.cache/funmovie/torrents")
@@ -64,19 +70,26 @@ def exec_rpc(magnet: str, save_path: str | os.PathLike[str] = SAVE_PATH) -> None
         logger.error(
             "aria2c 提交下载任务失败: magnet={}, error={}", magnet, res["error"]
         )
+        raise Aria2RpcError(f"magnet={magnet}, error={res['error']}")
 
 
-def magnet2torrent(save_path: str | os.PathLike[str] = SAVE_PATH) -> None:
-    """把待下载的磁力链接逐个提交给 aria2c。
+def magnet2torrent(save_path: str | os.PathLike[str] = SAVE_PATH) -> int:
+    """把待下载的磁力链接逐个提交给 aria2c。单个链接提交失败不中断其余链接。
 
     :param save_path: 种子保存目录
+    :return: 提交失败的磁力链接数量
     """
+    failures = 0
     for magnet in get_magnets():
-        exec_rpc(magnet, save_path)
+        try:
+            exec_rpc(magnet, save_path)
+        except Aria2RpcError:
+            failures += 1
+    return failures
 
 
 def main() -> None:
-    """解析命令行参数并提交 aria2 下载任务。"""
+    """解析命令行参数并提交 aria2 下载任务；只要有任务提交失败就以非 0 退出。"""
     parser = argparse.ArgumentParser(description="把数据库中的磁力链接提交给 aria2c")
     parser.add_argument(
         "--save-path",
@@ -84,7 +97,10 @@ def main() -> None:
         help="种子保存目录（默认读取 FUNMOVIE_SAVE_PATH）",
     )
     args = parser.parse_args()
-    magnet2torrent(args.save_path)
+    failures = magnet2torrent(args.save_path)
+    if failures:
+        logger.error("本次共有 {} 个磁力链接提交 aria2 失败", failures)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

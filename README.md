@@ -65,6 +65,22 @@ info = ParserTorrent("/path/to/xxx.torrent")
 print(info.get_filename())
 ```
 
+### 6. DHT 采集服务的统一启停
+
+`funmovie.magnet.core`（内部调用 `crawler.start_server()`）是仓库里唯一的长期运行服务，
+统一通过 `scripts/setup.sh` 管理：
+
+```bash
+scripts/setup.sh start dev     # 后台启动（源码树，dev 环境）
+scripts/setup.sh run dev       # 前台运行，便于调试
+scripts/setup.sh status        # 查看 dev/prod 两个环境的运行状态
+scripts/setup.sh stop dev      # 停止（连同 start_server() 派生的子进程一并终止）
+scripts/setup.sh start prod    # 生产启动，要求先 `pip install funmovie`（非 editable）
+```
+
+PID、日志统一放在 `.run/` 下。aria2 下载提交（`magnet_to_torrent_aria2c`）和种子解析
+（`parse_torrent`）是独立的一次性批处理任务，不受本脚本管理，按上面第 4、5 节单独运行。
+
 ## 已知局限（如实说明）
 
 - `funmovie/magnet/crawler.py` 实现了一个简化版 DHT 爬虫（`DHTServer`），会直接从 BT 网络里嗅探 info_hash；`funmovie/magnet/magnet_to_torrent_aria2c.py` 会通过 aria2c 提交下载任务 —— 这两个文件的网络/RPC 调用都已收进 `if __name__ == "__main__":`，作为脚本运行（`python -m ...`）才会触发，单纯 `import` 不会有副作用。

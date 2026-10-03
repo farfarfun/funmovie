@@ -1,5 +1,7 @@
 import base64
+import json
 import os
+import sys
 import tempfile
 
 import pytest
@@ -10,7 +12,7 @@ import funmovie.utils
 from funmovie.database import job
 from funmovie.database import core_redis
 from funmovie.database.core import MagnetManage, MovieManage
-from funmovie.magnet import magnet_to_torrent_aria2c, tracker_list
+from funmovie.magnet import crawler, magnet_to_torrent_aria2c, tracker_list
 from funmovie.magnet.crawler import DHTServer
 from funmovie.library import get_magnet as get_magnet_module
 from funmovie.magnet.parse_torrent import ParserTorrent
@@ -167,12 +169,12 @@ def test_get_track_writes_response_to_requested_directory(tmp_path, monkeypatch)
     assert (tmp_path / "all.txt").read_text() == "udp://one\nudp://two"
 
 
-def test_exec_rpc_uses_configured_save_path_and_logs_error(tmp_path, monkeypatch):
+def test_exec_rpc_uses_configured_save_path(tmp_path, monkeypatch):
     requests = []
 
     class Response:
         def read(self):
-            return b'{"error": {"message": "failed"}}'
+            return b"{}"
 
     class Connection:
         def __init__(self, host, port):
@@ -184,11 +186,57 @@ def test_exec_rpc_uses_configured_save_path_and_logs_error(tmp_path, monkeypatch
         def getresponse(self):
             return Response()
 
-    import json
-
     monkeypatch.setattr(magnet_to_torrent_aria2c, "HTTPConnection", Connection)
     magnet_to_torrent_aria2c.exec_rpc("magnet:test", tmp_path)
     assert requests[0]["params"][1]["dir"] == str(tmp_path)
+
+
+def test_exec_rpc_raises_on_aria2_error(tmp_path, monkeypatch):
+    class Response:
+        def read(self):
+            return b'{"error": {"message": "failed"}}'
+
+    class Connection:
+        def __init__(self, host, port):
+            pass
+
+        def request(self, method, path, body, headers):
+            pass
+
+        def getresponse(self):
+            return Response()
+
+    monkeypatch.setattr(magnet_to_torrent_aria2c, "HTTPConnection", Connection)
+    with pytest.raises(magnet_to_torrent_aria2c.Aria2RpcError):
+        magnet_to_torrent_aria2c.exec_rpc("magnet:test", tmp_path)
+
+
+def test_magnet2torrent_counts_failures_without_stopping(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        magnet_to_torrent_aria2c,
+        "get_magnets",
+        lambda: iter(["magnet:a", "magnet:b", "magnet:c"]),
+    )
+
+    calls = []
+
+    def fake_exec_rpc(magnet, save_path):
+        calls.append(magnet)
+        if magnet == "magnet:b":
+            raise magnet_to_torrent_aria2c.Aria2RpcError("boom")
+
+    monkeypatch.setattr(magnet_to_torrent_aria2c, "exec_rpc", fake_exec_rpc)
+    failures = magnet_to_torrent_aria2c.magnet2torrent(tmp_path)
+    assert calls == ["magnet:a", "magnet:b", "magnet:c"]
+    assert failures == 1
+
+
+def test_main_exits_non_zero_when_any_submission_fails(monkeypatch):
+    monkeypatch.setattr(magnet_to_torrent_aria2c, "magnet2torrent", lambda save_path: 2)
+    monkeypatch.setattr(sys, "argv", ["magnet_to_torrent_aria2c"])
+    with pytest.raises(SystemExit) as exc_info:
+        magnet_to_torrent_aria2c.main()
+    assert exc_info.value.code == 1
 
 
 def test_redis_client_delegates_to_set_operations(monkeypatch):
@@ -219,4 +267,41 @@ def test_web_crawler_handles_request_failure(monkeypatch):
 
 def test_dht_server_ignores_malformed_message():
     server = object.__new__(DHTServer)
+    logged = []
+    server.logger = type(
+        "_StubLogger",
+        (),
+        {"debug": staticmethod(lambda *a, **kw: logged.append((a, kw)))},
+    )()
     server.on_message({}, ("127.0.0.1", 6881))
+    assert len(logged) == 1
+
+
+def test_bootstrap_nodes_are_valid_socket_addresses():
+    # BOOTSTRAP_NODES 必须是 (host, port) 元组，不能混入 URL 字符串：
+    # 混入字符串会让 udp.sendto() 抛出 TypeError（不是 OSError），不会被
+    # send_krpc() 的 except OSError 捕获，导致 bootstrap() 整线程崩溃。
+    for node in crawler.BOOTSTRAP_NODES:
+        assert isinstance(node, tuple)
+        host, port = node
+        assert isinstance(host, str)
+        assert isinstance(port, int)
+
+
+def test_bootstrap_sends_without_crashing_on_unreachable_node(monkeypatch):
+    server = object.__new__(DHTServer)
+    server.nid = b"0" * 20
+
+    class FakeSocket:
+        def sendto(self, data, address):
+            raise OSError("network unreachable")
+
+    server.udp = FakeSocket()
+    logged = []
+    server.logger = type(
+        "_StubLogger",
+        (),
+        {"warning": staticmethod(lambda *a, **kw: logged.append((a, kw)))},
+    )()
+    server.bootstrap()
+    assert len(logged) == len(crawler.BOOTSTRAP_NODES)

@@ -28,3 +28,35 @@
 
 - 补充 `tests/`：覆盖迅雷链接解码、磁力链接的增删改查、`.torrent` 元信息解析等真实用例（此前测试仅做 import 冒烟测试）。
 - README 补充 `farfarfun` 组织信息与 MIT 协议声明。
+- 新增 `scripts/setup.sh`：统一管理 `funmovie.magnet.core`（DHT 采集服务）的
+  `start`/`run`/`stop`/`status`，dev 直接跑源码树、prod 强制校验已安装的正式包，
+  PID/日志落在 `.run/`，`stop` 会连同 `start_server()` 派生的多进程子进程一并终止。
+  README 补充对应用法说明。
+
+### 修复（第二轮，farfarfun/todo-list#735）
+
+- **严重**：`magnet/crawler.py` 的 `BOOTSTRAP_NODES` 混入了一批 `udp://`/`http://`
+  形式的 BT tracker announce URL（而非 DHT 节点地址）。`socket.sendto()` 只接受
+  `(host, port)` 元组，传入字符串会抛出 `TypeError`，且该异常不是 `OSError`，
+  不会被 `send_krpc()` 的 `except OSError` 捕获——服务一启动、第一次
+  `bootstrap()` 就会让线程崩溃，`start_server()` 实际从未真正跑起来过。
+  现在只保留真正的 DHT 引导节点（`router.bittorrent.com` 等 3 个）。
+- `magnet/crawler.py` 的 `on_message()` 用 `except KeyError: pass` 静默吞掉异常，
+  改为记录地址和缺失字段后丢弃。
+- `magnet/crawler.py` 的 KRPC 调试日志会把完整报文（可能包含 `token` 等协议凭据）
+  写入日志，改为只记录地址与消息类型（`y`/`q`）。
+- `magnet/magnet_to_torrent_aria2c.py` 的 `exec_rpc()` 在 aria2 返回 `error` 时
+  只记日志就返回，`main()` 仍以 0 退出；改为抛出 `Aria2RpcError`，
+  `magnet2torrent()` 捕获后继续处理其余磁力链接并统计失败数，
+  `main()` 只要有失败就以非 0 退出。
+- `magnet/parse_torrent.py` 的 `get_createby()` 标注为 `str | None`，但直接返回
+  `bdecode()` 产出的 `bytes`；改为按 utf-8 解码，解码失败时退化为十六进制字符串。
+- `magnet/core.py` 的 `command_line_runner()` 依次调用 `start_server()`、
+  `magnet2torrent()`、`parse_torrent()`，但 `start_server()` 内部线程永久阻塞，
+  后两个调用永远不可达；改为只保留 `start_server()`，aria2 下载与种子解析作为
+  独立的一次性任务按 README 用法单独运行。
+- `library/get_magnet.py` 的 `get_magnet()` docstring 称会 "upsert"，实际是
+  `insert or ignore`（重复主键保持原记录不变）；改为准确描述。
+- `script/clear_history.sh` 没有 `set -euo pipefail`，任一步失败仍可能继续执行
+  后续的 `git branch -D`/`git push -f` 等破坏性操作；补上失败即退出，并要求
+  显式传入 `--yes` 才会真正执行，同时校验当前目录是 git 仓库且存在 `origin` 远端。

@@ -44,5 +44,6 @@ def web1(index_start: int = 90, index_end: int = 110) -> None:
 
 
 def get_magnet() -> None:
-    """采集内置站点（mzzfree.com）里的新磁力链接并 upsert 进本地存储"""
+    """采集内置站点（mzzfree.com）里的新磁力链接并写入本地存储（insert or ignore：
+    已存在的磁力链接保持原记录不变，不是 upsert）"""
     web1()

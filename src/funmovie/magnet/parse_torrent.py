@@ -97,11 +97,17 @@ class ParserTorrent:
         """
         获取种子创建者
 
-        :return: 创建者字符串；种子未记录该字段时返回 None
+        :return: 创建者字符串；种子未记录该字段时返回 None。原始字段是
+            bencode 编码的 bytes，这里统一解码为 str（无法按 utf-8 解码的
+            字节退化为十六进制字符串），保证返回类型与标注一致
         """
-        if b"created by" in self.meta_info:
-            return self.meta_info[b"created by"]
-        return None
+        if b"created by" not in self.meta_info:
+            return None
+        raw = self.meta_info[b"created by"]
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError:
+            return codecs.getencoder("hex")(raw)[0].decode()
 
 
 def parse_torrent() -> None:

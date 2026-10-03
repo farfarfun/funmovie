@@ -11,27 +11,14 @@ import bencoder
 from funmovie.database.job import add_magnet
 from funmovie.magnet.utils import get_logger, get_neighbor, get_nodes_info, get_rand_id
 
+# DHT 引导节点，格式必须是 (host, port) 元组 —— `socket.sendto()` 只接受这种地址
+# 格式。此前这里混入了一批 `udp://...`/`http://...` 形式的 BT tracker announce
+# URL（而非 DHT 节点），既不是合法地址格式，语义上也是 tracker 而非 DHT 节点；
+# 一旦 bootstrap() 遍历到这些字符串就会在 `udp.sendto()` 里抛出
+# `TypeError: AF_INET address must be tuple, not str`，且该异常不是 `OSError`，
+# 不会被 `send_krpc()` 的 `except OSError` 捕获，导致服务启动后第一次
+# bootstrap() 就整线程崩溃。改为只保留真正的 DHT 引导节点。
 BOOTSTRAP_NODES = [
-    "udp://exodus.desync.com:6969/announce",
-    "udp://tracker.opentrackr.org:1337/announce",
-    "udp://tracker.internetwarriors.net:1337/announce",
-    "udp://9.rarbg.to:2710/announce",
-    "udp://public.popcorn-tracker.org:6969/announce",
-    "udp://tracker.vanitycore.co:6969/announce",
-    "https://1.track.ga:443/announce",
-    "udp://tracker.tiny-vps.com:6969/announce",
-    "udp://tracker.cypherpunks.ru:6969/announce",
-    "udp://thetracker.org:80/announce",
-    "udp://tracker.torrent.eu.org:451/announce",
-    "udp://retracker.lanta-net.ru:2710/announce",
-    "udp://bt.xxx-tracker.com:2710/announce",
-    "http://retracker.telecom.by:80/announce",
-    "http://retracker.mgts.by:80/announce",
-    "http://0d.kebhana.mx:443/announce",
-    "udp://torr.ws:2710/announce",
-    "udp://open.stealth.si:80/announce",
-    "udp://tracker.open-internet.nl:6969/announce",
-    "udp://tracker.coppersurfer.tk:6969/announce",
     ("router.bittorrent.com", 6881),
     ("dht.transmissionbt.com", 6881),
     ("router.utorrent.com", 6881),
@@ -206,8 +193,11 @@ class DHTServer:
                 # 第四个参数数是 token，这是在之前的 get_peers 请求中收到的回复中包含的。
                 elif msg[b"q"] == b"announce_peer":
                     self.on_announce_peer_request(msg, address)
-        except KeyError:
-            pass
+        except KeyError as e:
+            # 消息缺少必要字段，记录来源和缺失的 key 后丢弃，不静默吞掉
+            self.logger.debug(
+                "丢弃格式不完整的 krpc 消息: address={}, missing_key={}", address, e
+            )
 
     def on_find_node_response(self, msg: dict[bytes, Any]) -> None:
         """
@@ -269,7 +259,14 @@ class DHTServer:
                 data, address = self.udp.recvfrom(UDP_RECV_BUFFSIZE)
                 # 使用 bdecode 解码返回数据
                 msg = bencoder.bdecode(data)
-                self.logger.debug("收到 krpc 消息: address={}, msg={}", address, msg)
+                # 只记录消息类型和地址，不记录完整报文：KRPC 消息里的 `a`/`r`
+                # 字段可能携带 announce_peer 用到的 token 等协议凭据，不应写入日志
+                self.logger.debug(
+                    "收到 krpc 消息: address={}, y={}, q={}",
+                    address,
+                    msg.get(b"y"),
+                    msg.get(b"q"),
+                )
                 # 处理返回信息
                 self.on_message(msg, address)
                 time.sleep(SLEEP_TIME)
