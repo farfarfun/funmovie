@@ -32,4 +32,4 @@ def get_track(
 
 if __name__ == "__main__":
     for url in ("https://trackerslist.com/best.txt", "https://trackerslist.com/all.txt"):
-        logger.info("下载 tracker 列表成功: %s", ",".join(get_track(url)))
+        logger.info("下载 tracker 列表成功: {}", ",".join(get_track(url)))

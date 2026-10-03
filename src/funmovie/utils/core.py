@@ -23,7 +23,7 @@ def thunder2url(url: str) -> str:
         text = decoded.decode("gbk")
         return text[2 : len(text) - 2]
     except (binascii.Error, UnicodeDecodeError) as e:
-        logger.error("解码迅雷链接失败: url=%s, error=%s", url, e)
+        logger.error("解码迅雷链接失败: url={}, error={}", url, e)
         return url
 
 

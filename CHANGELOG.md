@@ -20,6 +20,9 @@
 - `magnet/crawler.py` 顶层无条件调用 `open("./tracks/all.txt", ...)`，在缺少该相对路径文件时会导致模块 `import` 即崩溃，并悄悄覆盖了上面已经写好的硬编码 tracker 列表；已删除该行。
 - `magnet/crawler.py`、`magnet/magnet_to_torrent_aria2c.py` 顶层分别无条件调用 `start_server()` / `magnet2torrent()`，导致单纯 `import` 这两个模块就会触发真实的网络/RPC 调用；已收进 `if __name__ == "__main__":`。
 - 修正多处裸 `except:`/宽泛 `except Exception` 吞异常的写法，改为按实际可能抛出的异常类型捕获并记录日志。
+- `library/get_magnet.py`、`utils/core.py`、`magnet/magnet_to_torrent_aria2c.py`、
+  `magnet/crawler.py`（3 处）、`magnet/tracker_list.py` 共 7 处日志误用 stdlib logging
+  的 `%s` 占位符，farlog（loguru）不支持该语法，参数被静默丢弃；统一改为 `{}` 占位符。
 
 ### 新增
 

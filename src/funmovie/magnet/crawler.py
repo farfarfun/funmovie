@@ -110,7 +110,7 @@ class DHTServer:
             # msg 要经过 bencode 编码
             self.udp.sendto(bencoder.bencode(msg), address)
         except OSError as e:
-            self.logger.warning("发送 krpc 消息失败: address=%s, error=%s", address, e)
+            self.logger.warning("发送 krpc 消息失败: address={}, error={}", address, e)
 
     def send_error(self, tid: bytes, address: Any) -> None:
         """
@@ -269,14 +269,14 @@ class DHTServer:
                 data, address = self.udp.recvfrom(UDP_RECV_BUFFSIZE)
                 # 使用 bdecode 解码返回数据
                 msg = bencoder.bdecode(data)
-                self.logger.debug("收到 krpc 消息: address=%s, msg=%s", address, msg)
+                self.logger.debug("收到 krpc 消息: address={}, msg={}", address, msg)
                 # 处理返回信息
                 self.on_message(msg, address)
                 time.sleep(SLEEP_TIME)
             except (OSError, ValueError) as e:
                 # UDP 接收失败或 bencode 解码失败，记录上下文后继续监听，不中断长期运行的服务
                 self.logger.warning(
-                    "接收/解析 krpc 消息失败: pid_%s, error=%s", self.process_id, e
+                    "接收/解析 krpc 消息失败: pid_{}, error={}", self.process_id, e
                 )
 
 

@@ -22,7 +22,7 @@ def web1(index_start: int = 90, index_end: int = 110) -> None:
             response = requests.get(url, timeout=10)
             soup = BeautifulSoup(response.text, "lxml")
         except requests.RequestException as e:
-            logger.error("抓取页面失败: url=%s, error=%s", url, e)
+            logger.error("抓取页面失败: url={}, error={}", url, e)
             return
 
         for item in soup.find_all("a"):

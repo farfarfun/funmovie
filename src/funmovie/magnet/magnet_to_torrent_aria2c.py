@@ -62,7 +62,7 @@ def exec_rpc(magnet: str, save_path: str | os.PathLike[str] = SAVE_PATH) -> None
     res = json.loads(conn.getresponse().read())
     if "error" in res:
         logger.error(
-            "aria2c 提交下载任务失败: magnet=%s, error=%s", magnet, res["error"]
+            "aria2c 提交下载任务失败: magnet={}, error={}", magnet, res["error"]
         )
 
 
