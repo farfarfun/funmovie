@@ -1,11 +1,12 @@
 import codecs
 import os
-from pprint import pprint
 from typing import Any
 
 from bencoder import bdecode
+from farlog import getLogger
 
 TORRENT_SAVE_PATH = "torrents"
+logger = getLogger(__name__)
 
 
 class ParserTorrent:
@@ -111,10 +112,8 @@ class ParserTorrent:
 
 
 def parse_torrent() -> None:
-    """遍历 `TORRENT_SAVE_PATH` 目录下的全部 .torrent 文件，打印其文件名信息"""
+    """遍历 `TORRENT_SAVE_PATH` 目录下的全部 .torrent 文件并记录其文件名信息。"""
     for _, _, files in os.walk(TORRENT_SAVE_PATH):
         for file in files:
             info = ParserTorrent(os.path.join(TORRENT_SAVE_PATH, file))
-            print(TORRENT_SAVE_PATH, file)
-            pprint(info.get_filename())
-            print()
+            logger.info("已解析种子文件 {}/{}: {}", TORRENT_SAVE_PATH, file, info.get_filename())

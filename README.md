@@ -2,18 +2,31 @@
 
 磁力链接（magnet）采集与下载辅助工具：从网站爬取磁力/迅雷链接、直接监听 BitTorrent DHT 网络嗅探 info_hash、把迅雷链接（`thunder://`）解码还原成磁力链接，统一存入本地 SQLite（可选 Redis），再通过 aria2c 的 JSON-RPC 接口把磁力链接转成种子下载，最后解析 `.torrent` 文件的元信息。
 
-包名/导入名与仓库名一致，均为 `funmovie`。经查 PyPI 上目前**没有**发布 `funmovie` 这个包（404），下面只给出源码安装方式。
+包名/导入名与仓库名一致，均为 `funmovie`。经查 PyPI 上目前**没有**发布 `funmovie` 这个包（404）；开发请从源码运行，生产请自行构建并安装 wheel。
 
-## 安装
+## 源码开发
 
-PyPI 上没有可用的发布包，需要从源码安装：
+克隆源码后用 `uv` 建立开发环境：
 
 ```bash
 git clone https://github.com/farfarfun/funmovie.git
 cd funmovie
 uv sync
-# 或者
+```
+
+也可使用 pip 进行 editable 安装：
+
+```bash
 pip install -e .
+```
+
+## 正式安装
+
+在源码检出目录构建 wheel，并在目标运行环境安装它：
+
+```bash
+uv build
+pip install dist/funmovie-0.0.5-py3-none-any.whl
 ```
 
 ## 用法示例
@@ -46,7 +59,7 @@ add_magnet("magnet:?xt=urn:btih:xxxx")
 print(get_magnets(size=10))
 ```
 
-默认落地到 `src/funmovie/database/movieset.db`（SQLite）；可调用 `funmovie.database.job.initialize(db_path=...)` 指定路径。`funmovie/database/core_redis.py` 里还提供了一个 `RedisClient`，可以选择把磁力链接存到 Redis 而不是 SQLite。
+默认落地到 `$XDG_DATA_HOME/funmovie/movieset.db`（未设置时为 `~/.local/share/funmovie/movieset.db`）。可调用 `funmovie.database.job.initialize(db_path=...)` 指定路径；显式参数优先于 `FUNMOVIE_DB_PATH` 环境变量，后者优先于默认位置。`funmovie/database/core_redis.py` 里还提供了一个 `RedisClient`，可以选择把磁力链接存到 Redis 而不是 SQLite。
 
 ### 4. 磁力链接转种子下载（依赖本地 aria2c）
 
@@ -75,7 +88,7 @@ scripts/setup.sh start dev     # 后台启动（源码树，dev 环境）
 scripts/setup.sh run dev       # 前台运行，便于调试
 scripts/setup.sh status        # 查看 dev/prod 两个环境的运行状态
 scripts/setup.sh stop dev      # 停止（连同 start_server() 派生的子进程一并终止）
-scripts/setup.sh start prod    # 生产启动，要求先 `pip install funmovie`（非 editable）
+scripts/setup.sh start prod    # 生产启动，要求先安装上面构建的 wheel（非 editable）
 ```
 
 PID、日志统一放在 `.run/` 下。aria2 下载提交（`magnet_to_torrent_aria2c`）和种子解析
