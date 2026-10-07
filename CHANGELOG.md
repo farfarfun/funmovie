@@ -1,9 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.0.5 - 2026-10-07
 
 ### 变更
 
+- SQLite 默认数据库从包安装目录迁移到用户数据目录；支持以
+  `FUNMOVIE_DB_PATH` 覆盖，显式传入的 `db_path` 优先级最高。
+- README 区分源码开发与正式 wheel 安装流程；prod 服务不再指向尚未发布的 PyPI 包。
+- 版本记录文件同步为 `0.0.5`。
 - 包名从 `notemovie` 改为 `funmovie`，与仓库名保持一致（`note*` → `fun*` 清理，farfarfun/todo-list#298）。导入名与 `pyproject.toml` 里声明的 PyPI 包名同步修改：
   - `import notemovie...` → `import funmovie...`
   - PyPI 包名 `notemovie` → `funmovie`
@@ -15,6 +19,7 @@
 
 ### 修复
 
+- `magnet/parse_torrent.py` 不再直接向标准输出写入处理信息，统一通过 `farlog` 记录。
 - `database/core.py` 的 `get_magnets()` 拼 SQL 时误用了字面量字符串 `"table_name"`，而不是插入 `self.table_name`，导致查询恒失败（`no such table: table_name`）。
 - `database/job.py` 的 `update_status()` 把整型变量 `status` 当成 dict 的 key 用（`{"magnet": ..., status: status}`），而不是字符串 `"status"`，导致状态更新实际不生效。
 - `magnet/crawler.py` 顶层无条件调用 `open("./tracks/all.txt", ...)`，在缺少该相对路径文件时会导致模块 `import` 即崩溃，并悄悄覆盖了上面已经写好的硬编码 tracker 列表；已删除该行。

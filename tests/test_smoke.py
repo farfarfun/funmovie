@@ -11,7 +11,7 @@ import funmovie
 import funmovie.utils
 from funmovie.database import job
 from funmovie.database import core_redis
-from funmovie.database.core import MagnetManage, MovieManage
+from funmovie.database.core import MagnetManage, MovieManage, default_database_path
 from funmovie.magnet import crawler, magnet_to_torrent_aria2c, tracker_list
 from funmovie.magnet.crawler import DHTServer
 from funmovie.library import get_magnet as get_magnet_module
@@ -32,6 +32,21 @@ def test_import_database_job_does_not_create_database(tmp_path, monkeypatch):
     monkeypatch.setattr(job, "manage", None)
     monkeypatch.setattr(job, "magnet", None)
     assert not database_path.exists()
+
+
+def test_default_database_path_uses_user_data_directory(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    assert default_database_path() == tmp_path / "data" / "funmovie" / "movieset.db"
+
+
+def test_database_path_environment_variable_overrides_default(monkeypatch, tmp_path):
+    database_path = tmp_path / "configured.db"
+    monkeypatch.setenv("FUNMOVIE_DB_PATH", str(database_path))
+    manage = MagnetManage()
+    try:
+        assert manage.db_path == database_path
+    finally:
+        manage.close()
 
 
 THUNDER_URL = (

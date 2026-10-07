@@ -1,15 +1,26 @@
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any
+
+
+def default_database_path() -> Path:
+    """返回默认 SQLite 数据库路径，始终位于用户可写的数据目录。"""
+    data_home = os.environ.get("XDG_DATA_HOME")
+    base_dir = Path(data_home) if data_home else Path.home() / ".local" / "share"
+    return base_dir / "funmovie" / "movieset.db"
 
 
 class _SqliteTable:
     """项目内部使用的轻量 SQLite 表封装。"""
 
     def __init__(self, table_name: str, db_path: str | None = None) -> None:
-        default_path = Path(__file__).with_name("movieset.db")
         self.table_name = table_name
-        self.db_path = Path(db_path) if db_path is not None else default_path
+        self.db_path = (
+            Path(db_path)
+            if db_path is not None
+            else Path(os.environ.get("FUNMOVIE_DB_PATH", default_database_path()))
+        )
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.columns: list[str] = []
@@ -56,7 +67,7 @@ class MovieManage(_SqliteTable):
         """初始化电影表管理器，但不自动建表。
 
         :param table_name: 数据表名
-        :param db_path: SQLite 文件路径；省略时使用包内的 movieset.db
+        :param db_path: SQLite 文件路径；省略时使用 ``FUNMOVIE_DB_PATH``，再使用用户数据目录
         """
         super().__init__(db_path=db_path, table_name=table_name)
         self.columns = ["url", "name", "type", "source", "category", "describe", "size"]
@@ -94,7 +105,7 @@ class MagnetManage(_SqliteTable):
         """初始化磁力链接表管理器，但不自动建表。
 
         :param table_name: 数据表名
-        :param db_path: SQLite 文件路径；省略时使用包内的 movieset.db
+        :param db_path: SQLite 文件路径；省略时使用 ``FUNMOVIE_DB_PATH``，再使用用户数据目录
         """
         super().__init__(db_path=db_path, table_name=table_name)
         self.columns = ["magnet", "status"]

@@ -176,7 +176,7 @@ print(resolved)
 PYCHECK
   ); then
     echo "错误: prod 要求运行已安装的 funmovie 正式包，当前校验未通过。" >&2
-    echo "      请执行 pip install funmovie（不要用 -e）后再启动 prod；" >&2
+    echo "      请先构建并安装 wheel（uv build && pip install dist/funmovie-*.whl，不要用 -e）后再启动 prod；" >&2
     echo "      本地源码调试请改用 dev 环境。" >&2
     return 1
   fi
