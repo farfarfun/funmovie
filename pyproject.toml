@@ -12,12 +12,17 @@ dependencies = [
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
     "tqdm>=4.66.0",
-    "redis>=5.0.0",
     # PyPI 上的 `bencoder`（0.2.0）只提供 encode/decode API，代码实际用的
     # bencode/bdecode 由同 import 名下的另一个发行版 `bencoder.pyx` 提供
     "bencoder.pyx>=3.0.0",
     "farlog>=1.1.7",
 ]
+
+[project.optional-dependencies]
+redis = ["redis>=5.0.0"]
+
+[project.scripts]
+funmovie-dht = "funmovie.magnet.core:command_line_runner"
 
 [build-system]
 requires = ["hatchling"]
@@ -27,7 +32,7 @@ build-backend = "hatchling.build"
 packages = ["src/funmovie"]
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "redis>=5.0.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

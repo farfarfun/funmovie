@@ -1,4 +1,5 @@
 import codecs
+import os
 import socket
 import time
 from collections import deque
@@ -30,8 +31,8 @@ MAX_NODE_QSIZE = 10000
 UDP_RECV_BUFFSIZE = 65535
 # 服务 host
 SERVER_HOST = "0.0.0.0"
-# 服务端口
-SERVER_PORT = 9099
+# 服务端口。服务管理脚本通过 FUNMOVIE_DHT_PORT 统一配置，直接运行时保持默认值。
+SERVER_PORT = int(os.environ.get("FUNMOVIE_DHT_PORT", "9099"))
 # 磁力链接前缀
 MAGNET_PER = "magnet:?xt=urn:btih:{}"
 # while 循环休眠时间

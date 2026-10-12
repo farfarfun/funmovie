@@ -13,7 +13,9 @@ from funmovie.database import job
 from funmovie.database import core_redis
 from funmovie.database.core import MagnetManage, MovieManage, default_database_path
 from funmovie.magnet import crawler, magnet_to_torrent_aria2c, tracker_list
+from funmovie.magnet import parse_torrent as parse_torrent_module
 from funmovie.magnet.crawler import DHTServer
+from funmovie.library import core as library_core
 from funmovie.library import get_magnet as get_magnet_module
 from funmovie.magnet.parse_torrent import ParserTorrent
 from funmovie.utils import thunder2magnet, thunder2url
@@ -167,6 +169,58 @@ def test_parser_torrent_multi_file(tmp_path):
     assert parser.is_files() is True
     filenames = dict(parser.get_filename())
     assert filenames["path"] == ["a.txt"]
+
+
+def test_parser_torrent_optional_metadata_and_invalid_creator_encoding(tmp_path):
+    torrent_path = tmp_path / "metadata.torrent"
+    with torrent_path.open("wb") as torrent_file:
+        torrent_file.write(
+            bencode(
+                {
+                    b"creation date": 1_700_000_000,
+                    b"created by": b"\xff",
+                    b"info": {b"name": b"a.mp4", b"length": 100},
+                }
+            )
+        )
+
+    parser = ParserTorrent(str(torrent_path))
+    assert parser.get_creation_date() == 1_700_000_000
+    assert parser.get_createby() == "ff"
+
+
+def test_parser_torrent_missing_optional_metadata(tmp_path):
+    parser = ParserTorrent(_build_single_file_torrent(str(tmp_path)))
+    assert parser.get_creation_date() is None
+    assert parser.get_createby() is None
+
+
+def test_parse_torrent_processes_files_returned_by_directory_walk(monkeypatch):
+    seen = []
+
+    class FakeParser:
+        def __init__(self, path):
+            seen.append(path)
+
+        def get_filename(self):
+            return "name"
+
+    monkeypatch.setattr(parse_torrent_module, "TORRENT_SAVE_PATH", "/tmp/torrents")
+    monkeypatch.setattr(parse_torrent_module, "ParserTorrent", FakeParser)
+    monkeypatch.setattr(
+        parse_torrent_module.os,
+        "walk",
+        lambda path: [("/tmp/torrents", ["nested"], ["one.torrent", "two.torrent"])],
+    )
+    parse_torrent_module.parse_torrent()
+    assert seen == ["/tmp/torrents/one.torrent", "/tmp/torrents/two.torrent"]
+
+
+def test_library_core_run_delegates_to_get_magnet(monkeypatch):
+    calls = []
+    monkeypatch.setattr(library_core, "get_magnet", lambda: calls.append(True))
+    library_core.run()
+    assert calls == [True]
 
 
 def test_get_track_writes_response_to_requested_directory(tmp_path, monkeypatch):
