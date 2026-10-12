@@ -36,7 +36,7 @@ pip install dist/funmovie-0.0.5-py3-none-any.whl
 ```python
 from funmovie.library.get_magnet import get_magnet
 
-get_magnet()  # 爬取 funmovie/library/get_magnet.py 里内置的站点，把新磁力链接写入本地 SQLite
+get_magnet()  # 爬取 src/funmovie/library/get_magnet.py 里内置的站点，把新磁力链接写入本地 SQLite
 ```
 
 ### 2. 迅雷链接转磁力链接
@@ -59,7 +59,7 @@ add_magnet("magnet:?xt=urn:btih:xxxx")
 print(get_magnets(size=10))
 ```
 
-默认落地到 `$XDG_DATA_HOME/funmovie/movieset.db`（未设置时为 `~/.local/share/funmovie/movieset.db`）。可调用 `funmovie.database.job.initialize(db_path=...)` 指定路径；显式参数优先于 `FUNMOVIE_DB_PATH` 环境变量，后者优先于默认位置。`funmovie/database/core_redis.py` 里还提供了一个 `RedisClient`，可以选择把磁力链接存到 Redis 而不是 SQLite。
+默认落地到 `$XDG_DATA_HOME/funmovie/movieset.db`（未设置时为 `~/.local/share/funmovie/movieset.db`）。可调用 `funmovie.database.job.initialize(db_path=...)` 指定路径；显式参数优先于 `FUNMOVIE_DB_PATH` 环境变量，后者优先于默认位置。Redis 是可选功能，使用前安装 `pip install 'funmovie[redis]'`；`src/funmovie/database/core_redis.py` 提供 `RedisClient`，可以选择把磁力链接存到 Redis 而不是 SQLite。
 
 ### 4. 磁力链接转种子下载（依赖本地 aria2c）
 
@@ -80,15 +80,18 @@ print(info.get_filename())
 
 ### 6. DHT 采集服务的统一启停
 
-`funmovie.magnet.core`（内部调用 `crawler.start_server()`）是仓库里唯一的长期运行服务，
-统一通过 `scripts/setup.sh` 管理：
+`funmovie-dht`（内部调用 `crawler.start_server()`）是仓库里唯一的长期运行服务，
+统一通过 `scripts/setup.sh` 管理。先选择安装来源，之后的服务动作始终运行当前已安装版本：
 
 ```bash
-scripts/setup.sh start dev     # 后台启动（源码树，dev 环境）
-scripts/setup.sh run dev       # 前台运行，便于调试
-scripts/setup.sh status        # 查看 dev/prod 两个环境的运行状态
-scripts/setup.sh stop dev      # 停止（连同 start_server() 派生的子进程一并终止）
-scripts/setup.sh start prod    # 生产启动，要求先安装上面构建的 wheel（非 editable）
+scripts/setup.sh install-dev   # 以 editable 安装当前源码，用于开发
+scripts/setup.sh install-prod  # 安装当前源码构建出的正式包
+scripts/setup.sh start         # 后台启动已安装版本
+scripts/setup.sh run           # 前台运行已安装版本
+scripts/setup.sh status        # 查看运行状态
+scripts/setup.sh stop          # 停止（连同 start_server() 派生的子进程一并终止）
+scripts/setup.sh upgrade       # 从包索引升级
+scripts/setup.sh rollback 0.0.5 # 回退到指定已发布版本
 ```
 
 PID、日志统一放在 `.run/` 下。aria2 下载提交（`magnet_to_torrent_aria2c`）和种子解析
@@ -96,7 +99,7 @@ PID、日志统一放在 `.run/` 下。aria2 下载提交（`magnet_to_torrent_a
 
 ## 已知局限（如实说明）
 
-- `funmovie/magnet/crawler.py` 实现了一个简化版 DHT 爬虫（`DHTServer`），会直接从 BT 网络里嗅探 info_hash；`funmovie/magnet/magnet_to_torrent_aria2c.py` 会通过 aria2c 提交下载任务 —— 这两个文件的网络/RPC 调用都已收进 `if __name__ == "__main__":`，作为脚本运行（`python -m ...`）才会触发，单纯 `import` 不会有副作用。
+- `src/funmovie/magnet/crawler.py` 实现了一个简化版 DHT 爬虫（`DHTServer`），会直接从 BT 网络里嗅探 info_hash；`src/funmovie/magnet/magnet_to_torrent_aria2c.py` 会通过 aria2c 提交下载任务 —— 这两个文件的网络/RPC 调用都已收进 `if __name__ == "__main__":`，作为脚本运行（`python -m ...`）才会触发，单纯 `import` 不会有副作用。
 - `add_magnet` 使用 SQLite 的 `insert or ignore`：新链接会插入，主键重复的链接保持原记录不变。
 - 爬取的目标站点、tracker 列表等均为历史遗留配置，可能已失效，需要自行更新维护。
 
