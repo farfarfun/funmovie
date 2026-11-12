@@ -3,7 +3,7 @@ name = "funmovie"
 version = "0.0.5"
 description = "BitTorrent DHT 磁力链接采集、迅雷链接转磁力、本地存储（SQLite/Redis）与 aria2c 下载、种子元信息解析工具"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "牛哥", email = "farfarfun@qq.com" }]
